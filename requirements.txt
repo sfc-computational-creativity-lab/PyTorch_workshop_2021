@@ -1,0 +1,6 @@
+torch
+torchvision
+torchaudio
+
+urllib3
+pandas
