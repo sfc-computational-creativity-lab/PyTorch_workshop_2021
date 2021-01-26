@@ -1,0 +1,3 @@
+[submodule "audio_recognition/ESC-50"]
+	path = audio_recognition/ESC-50
+	url = https://github.com/karolpiczak/ESC-50
