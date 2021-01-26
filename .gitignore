@@ -1,7 +1,10 @@
 
 .ipynb_checkpoints/
 image_recognition/data
+audio_recognition/data
 
 references
 tmp
-.vscode/settings.json
+.vscode
+.DS_Store
+
