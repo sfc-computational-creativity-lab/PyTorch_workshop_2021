@@ -1,8 +1,7 @@
 
 .ipynb_checkpoints/
-image_recognition/data/test/
-image_recognition/data/train/
-image_recognition/data/val/
+image_recognition/data
 
 references
 tmp
+.vscode/settings.json
