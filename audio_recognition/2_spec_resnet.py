@@ -1,6 +1,6 @@
 #%%
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]='3'
+os.environ["CUDA_VISIBLE_DEVICES"]='2'
 #%%
 from glob import glob
 from collections import Counter
@@ -10,19 +10,29 @@ print(Counter(esc50_list))
 
 # %%
 import torchaudio
+import torchvision
+import librosa
 from torch.utils.data import Dataset
 from pathlib import Path
+import numpy as np 
+import functools
+
+SAMPLE_RATE = 16000
 
 class ESC50(Dataset):
     def __init__(self, path):
         files = Path(path).glob("*.wav")
         self.items = [(f, int(f.name.split("-")[-1].replace(".wav", ""))) for f in files]
         self.length = len(self.items)
+        self.transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
+    @functools.lru_cache(maxsize=500) # least recently used cache - 一番古く使われたものから消していく
     def __getitem__(self, index):
         filename, label = self.items[index]
-        audio_tensor, sample_rate = torchaudio.load(filename)
-        return audio_tensor, label
+        audio_data, sample_rate = librosa.load(filename, sr = SAMPLE_RATE)
+        spectrogram = librosa.feature.melspectrogram(audio_data, sr=sample_rate)
+        log_spectrogram = librosa.power_to_db(spectrogram, ref=np.max)
+        return self.transforms(log_spectrogram), label
 
     def __len__(self):
         return self.length
@@ -58,101 +68,38 @@ else:
     device = torch.device("cpu")
 
 # %%
+from torchsummary import summary 
+from torchvision import models
 
+spec_resnet = models.resnet50(pretrained=True)
+
+
+# %%
+from torch import nn as nn
+for param in spec_resnet.parameters():
+    param.requires_grad = False
+
+print(spec_resnet)
+
+spec_resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+spec_resnet.fc = nn.Sequential(nn.Linear(spec_resnet.fc.in_features, 500), 
+    nn.ReLU(),
+    nn.Dropout(), nn.Linear(500, 50)
+)
+print(spec_resnet)
+spec_resnet.to(device)
+
+
+# %%
+import torch.optim as optim
+optimizer = optim.Adam([ #{'params': spec_resnet.parameters()},
+                        {'params': spec_resnet.fc.parameters(), 'lr': 1e-3}], lr=1e-7)
+# %%
 from torch.nn import Module
 import torch.nn as nn
 import torch.nn.functional as F
 from torchsummary import summary
 
-
-# original model in the book
-class AudioNet(Module):
-    def __init__(self):
-        super(AudioNet, self).__init__()
-
-        self.conv1 = nn.Conv1d(1, 128, 80, 4)
-        self.bn1 = nn.BatchNorm1d(128)
-        self.pool1 = nn.MaxPool1d(4)
-        self.conv2 = nn.Conv1d(128, 128, 10, 4)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.pool2 = nn.MaxPool1d(4)
-        self.conv3 = nn.Conv1d(128, 256, 10)
-        self.bn3 = nn.BatchNorm1d(256)
-        self.pool3 = nn.MaxPool1d(4)
-        self.conv4 = nn.Conv1d(256, 512, 10)
-        self.bn4 = nn.BatchNorm1d(512)
-        self.pool4 = nn.MaxPool1d(4)
-        self.avgpool = nn.AvgPool1d(30)
-        self.fc1 = nn.Linear(512, 50)
-    
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(self.bn1(x))
-        x = self.pool1(x)
-        x = self.conv2(x)
-        x = F.relu(self.bn2(x))
-        x = self.pool2(x)
-        x = self.conv3(x)
-        x = F.relu(self.bn3(x))
-        x = self.pool3(x)
-        x = self.conv4(x)
-        x = F.relu(self.bn4(x))
-        x = self.pool4(x)
-        x = self.avgpool(x)
-        x = x.squeeze(-1)
-        x = self.fc1(x)
-        return x
-
-audionet = AudioNet()
-audionet.to(device) # 昔のバージョンだと　cuda()
-summary(audionet, input_size = (1, 220500))
-# %% 
-# updated version
-# class AudioNet(nn.Module):
-#     def __init__(self):
-#         super(AudioNet, self).__init__()
-
-# #        self.conv1 = nn.Conv1d(1, 128, 80, 4)
-#         self.conv1 = nn.Conv1d(100, 128, kernel_size=5, stride=4)
-#         self.bn1 = nn.BatchNorm1d(128)
-#         self.pool1 = nn.MaxPool1d(4)
-#         self.conv2 = nn.Conv1d(128, 128, 3)
-#         self.bn2 = nn.BatchNorm1d(128)
-#         self.pool2 = nn.MaxPool1d(4)
-#         self.conv3 = nn.Conv1d(128, 256, 3)
-#         self.bn3 = nn.BatchNorm1d(256)
-#         self.pool3 = nn.MaxPool1d(4)
-#         self.conv4 = nn.Conv1d(256, 512, 3)
-#         self.bn4 = nn.BatchNorm1d(512)
-#         self.pool4 = nn.MaxPool1d(4)
-#         self.fc1 = nn.Linear(512, 50)
-
-#     def forward(self, x):
-#         x = x.unsqueeze(-1).view(-1, 100, 2205)
-#         x = self.conv1(x)
-#         x = F.relu(self.bn1(x))
-#         x = self.pool1(x)
-#         x = self.conv2(x)
-#         x = F.relu(self.bn2(x))
-#         x = self.pool2(x)
-#         x = self.conv3(x)
-#         x = F.relu(self.bn3(x))
-#         x = self.pool3(x)
-#         x = self.conv4(x)
-#         x = F.relu(self.bn4(x))
-#         x = self.pool4(x)
-#         x = x.squeeze(-1)
-#         x = self.fc1(x)
-#         return x
-
-# audionet = AudioNet()
-# audionet.to(device) # 昔のバージョンだと　cuda()
-# summary(audionet, input_size = (1, 220500))
-
-# %%
-import torch.optim as optim
-optimizer = optim.Adam(audionet.parameters(),lr = 1e-5)
-# %%
 def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device="cpu"):
     for epoch in range(epochs):
         training_loss = 0.0
@@ -198,7 +145,7 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
             .format(epoch, training_loss, valid_loss, num_correct/num_examples))
 
 # %%
-train(audionet, optimizer, nn.CrossEntropyLoss(), train_loader, val_loader, epochs=40, device=device)
+train(spec_resnet, optimizer, nn.CrossEntropyLoss(), train_loader, val_loader, epochs=40, device=device)
 
 
 # %%
