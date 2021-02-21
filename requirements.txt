@@ -8,3 +8,5 @@ urllib3
 pandas
 librosa
 matplotlib
+
+pretty_midi
