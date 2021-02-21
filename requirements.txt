@@ -10,3 +10,5 @@ librosa
 matplotlib
 
 pretty_midi
+
+spacy == 2.3.5

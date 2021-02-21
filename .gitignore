@@ -8,3 +8,6 @@ tmp
 .vscode
 .DS_Store
 
+data/text/training.1600000.processed.noemoticon.csv
+train-processed-sample.csv
+train-processed.csv
