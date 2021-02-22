@@ -9,6 +9,10 @@ import torch.optim as optim
 from PIL import Image
 from glob import glob 
 
+
+# 学習用のデータは
+# ./data/download.pyを走らせる
+
 train_data_path = "./data/train"
 
 img_transforms = transforms.Compose([
@@ -16,6 +20,8 @@ img_transforms = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
+# %%
 
 def check_image(path):
     try:
@@ -32,11 +38,13 @@ val_data = torchvision.datasets.ImageFolder(root=val_data_path, transform=img_tr
 
 test_data_path = "./data/test/"
 test_data = torchvision.datasets.ImageFolder(root=test_data_path, transform=img_transforms, is_valid_file=check_image)
+# %%
 
 batch_size = 32
 train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size)
 val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
 test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
+# %%
 
 class SimpleNet(nn.Module):
     
@@ -53,12 +61,16 @@ class SimpleNet(nn.Module):
         x = self.fc3(x) # cross entropyロスを使うときは内部で
                         # softmax()をかけているのでここではそのまま返す
         return x
+# %%
 
 simplenet = SimpleNet()
+
+# %%
 
 # Optimizer
 optimizer = optim.Adam(simplenet.parameters(), lr=0.001)
 
+# %%
 # GPUの有無を確認
 if torch.cuda.is_available():
     print("Using GPU")
@@ -68,6 +80,8 @@ else:
     device = torch.device("cpu")
 simplenet.to(device) # 昔のバージョンだと　cuda()
 print(simplenet)
+
+# %%
 
 epochs = 100
 
@@ -114,16 +128,20 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
 
         print('Epoch: {}, Training Loss: {:.2f}, Validation Loss: {:.2f}, Accuracy = {:.2f}'
             .format(epoch, training_loss, valid_loss, num_correct/num_examples))
+# %%
 
 # training
 train(simplenet, optimizer, torch.nn.CrossEntropyLoss(), train_data_loader, 
     val_data_loader, epochs=10, device=device)
 print("finished training")
 
+# %%
 # save
 import os
 os.makedirs("./tmp", exist_ok=True)
 torch.save(simplenet, "./tmp/simplenet_cat_fish")  # まるごとセーブ
+
+# %%
 
 # 
 # torch.save(simplenet.state_dict(), "./tmp/simplenet_cat_fish_dict") # layerの名前と重みをdict形式で保存

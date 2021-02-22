@@ -10,5 +10,6 @@ librosa
 matplotlib
 
 pretty_midi
+fluidsynth
 
 spacy == 2.3.5
