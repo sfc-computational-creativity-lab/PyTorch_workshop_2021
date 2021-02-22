@@ -1,13 +1,15 @@
 # %%
 # MIDIファイルの扱い方 - ここでは pretty_midiを使う
 
-!pip install pretty_midi
+# !pip install pretty_midi
 
+import torch
 import pretty_midi
 
 # %%
 
-path = './data/midi/Nocturnes/train/chno0901.mid'
+
+path = './data/midi/chopin/train/chpn-p1.mid'
 
 pm = pretty_midi.PrettyMIDI(path)
 
@@ -47,7 +49,7 @@ def get_pitch_array(filepath):
         # noteをスタートのタイミングでソートする
         notes = sorted(inst.notes, key=lambda note: note.start)
 
-        # ピッチの配列
+        # ピッチのみの配列
         pitches = [ min(PITCH_NUM - 1, max(0, note.pitch - MIN_NOTE)) for note in inst.notes ]
         
         results.append(pitches)
@@ -70,6 +72,15 @@ def pitch_array_to_midi(pitches, bpm=120):
     pm.instruments.append(piano)
     return pm
 
+#%%
+import os
+os.makedirs("./tmp", exist_ok=True)
+
+pitches = get_pitch_array(path)
+print(pitches)
+
+midi = pitch_array_to_midi(pitches[0][:100])
+midi.write("./tmp/pitch-only.mid")
 
 #%%
 
@@ -119,7 +130,6 @@ val_data = MIDIData('./data/midi/chopin/val/')
 print(train_data.primes[:3])
 print(train_data.nexts[:3])
 
-
 batch_size = 32
 train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size)
 val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
@@ -127,8 +137,11 @@ val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
 # %%
 
 import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 
-EMBEDDING_DIM = 16
+EMBEDDING_DIM = 32
+HIDDEN_DIM = 256
 
 embed = nn.Embedding(PITCH_NUM, EMBEDDING_DIM)
 
@@ -157,7 +170,8 @@ class PitcnNet(nn.Module):
     def __init__(self):
         super(PitcnNet, self).__init__()
         self.embeds = nn.Embedding(PITCH_NUM, EMBEDDING_DIM)
-        self.rnn   = nn.LSTM(EMBEDDING_DIM, PITCH_NUM, batch_first=True)
+        self.rnn    = nn.LSTM(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True)
+        self.fc     = nn.Linear(HIDDEN_DIM, PITCH_NUM) 
 
     def forward(self, x):
         emb = self.embeds(x)

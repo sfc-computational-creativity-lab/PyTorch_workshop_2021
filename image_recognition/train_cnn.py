@@ -38,7 +38,7 @@ train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_siz
 val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
 test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
 
-
+# %%
 
 class CNNNet(nn.Module):
     
@@ -80,9 +80,12 @@ class CNNNet(nn.Module):
         return x
 
 cnnnet = CNNNet()
+# %%
 
 # Optimizer
 optimizer = optim.Adam(cnnnet.parameters(), lr=0.001)
+
+# %%
 
 # GPUの有無を確認
 if torch.cuda.is_available():
@@ -93,6 +96,8 @@ else:
     device = torch.device("cpu")
 cnnnet.to(device) # 昔のバージョンだと　cuda()
 print(cnnnet)
+
+# %%
 
 epochs = 100
 
