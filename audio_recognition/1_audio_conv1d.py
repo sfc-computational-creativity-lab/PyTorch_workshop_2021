@@ -6,6 +6,7 @@ from glob import glob
 from collections import Counter
 
 esc50_list = [f.split("-")[-1].replace(".wav","") for f in glob("./ESC-50/audio/*.wav")]
+print(esc50_list)
 print(Counter(esc50_list))
 
 # %%
