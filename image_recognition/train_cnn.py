@@ -1,3 +1,4 @@
+#%%
 import torchvision
 from torchvision import transforms
 
@@ -12,7 +13,7 @@ from glob import glob
 train_data_path = "./data/train"
 
 img_transforms = transforms.Compose([
-    transforms.Resize((64, 64)),  # 64 pixel x 64 pixel
+    transforms.Resize((224, 224)),  # 64 pixel x 64 pixel
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
@@ -33,7 +34,9 @@ val_data = torchvision.datasets.ImageFolder(root=val_data_path, transform=img_tr
 test_data_path = "./data/test/"
 test_data = torchvision.datasets.ImageFolder(root=test_data_path, transform=img_transforms, is_valid_file=check_image)
 
-batch_size = 64
+#%%
+
+batch_size = 32
 train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size)
 val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
 test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
@@ -45,7 +48,7 @@ class CNNNet(nn.Module):
     def __init__(self, num_classes = 2):
         super(CNNNet, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2), # input channel, output channel(# of filters)
+            nn.Conv2d(3, 64, kernel_size=5, stride=4, padding=2), # input channel, output channel(# of filters)
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=3, stride=2),
             nn.Conv2d(64, 192, kernel_size=5, padding=2),
@@ -81,6 +84,11 @@ class CNNNet(nn.Module):
 
 cnnnet = CNNNet()
 # %%
+from torchinfo import summary
+
+summary(cnnnet, (1, 3, 224, 224))
+
+# %% 
 
 # Optimizer
 optimizer = optim.Adam(cnnnet.parameters(), lr=0.001)
@@ -147,7 +155,7 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
 
 # training
 train(cnnnet, optimizer, torch.nn.CrossEntropyLoss(), train_data_loader, 
-    val_data_loader, epochs=30, device=device)
+    val_data_loader, epochs=epochs, device=device)
 print("finished training")
 
 # save
@@ -158,3 +166,5 @@ torch.save(cnnnet, "./tmp/cnnnet_cat_fish")  # まるごとセーブ
 # 
 # torch.save(simplenet.state_dict(), "./tmp/simplenet_cat_fish_dict") # layerの名前と重みをdict形式で保存
 
+
+# %%

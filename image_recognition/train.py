@@ -1,3 +1,5 @@
+
+#%%
 import torchvision
 from torchvision import transforms
 
@@ -13,7 +15,6 @@ from glob import glob
 # 学習用のデータは
 # ./data/download.pyを走らせる
 
-train_data_path = "./data/train"
 
 img_transforms = transforms.Compose([
     transforms.Resize((64, 64)),  # 64 pixel x 64 pixel
@@ -30,7 +31,9 @@ def check_image(path):
     except:
         return False
 
-train_data = torchvision.datasets.ImageFolder(root=train_data_path, transform=img_transforms,is_valid_file=check_image)
+
+train_data_path = "./data/train/"
+train_data = torchvision.datasets.ImageFolder(root=train_data_path, transform=img_transforms, is_valid_file=check_image)
 print(len(train_data))
 
 val_data_path = "./data/val/"
@@ -38,12 +41,24 @@ val_data = torchvision.datasets.ImageFolder(root=val_data_path, transform=img_tr
 
 test_data_path = "./data/test/"
 test_data = torchvision.datasets.ImageFolder(root=test_data_path, transform=img_transforms, is_valid_file=check_image)
+
+#%%
+
+for img, label in train_data:
+    print(img.shape, label)
+
 # %%
 
 batch_size = 32
-train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size)
-val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
-test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
+train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
+val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=True)
+test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=True)
+# %%
+
+for img, label in train_data_loader:
+    print(img.shape, label)
+    break
+
 # %%
 
 class SimpleNet(nn.Module):
@@ -67,6 +82,10 @@ simplenet = SimpleNet()
 
 # %%
 
+simplenet.parameters() 
+
+#%%
+
 # Optimizer
 optimizer = optim.Adam(simplenet.parameters(), lr=0.001)
 
@@ -85,7 +104,7 @@ print(simplenet)
 
 epochs = 100
 
-def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device="cpu"):
+def train(model, optimizer, loss_fn, train_loader, val_loader, epochs=20, device="cpu"):
     for epoch in range(epochs):
         training_loss = 0.0
         valid_loss = 0.0
@@ -130,6 +149,8 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
             .format(epoch, training_loss, valid_loss, num_correct/num_examples))
 # %%
 
+
+
 # training
 train(simplenet, optimizer, torch.nn.CrossEntropyLoss(), train_data_loader, 
     val_data_loader, epochs=10, device=device)
@@ -143,6 +164,21 @@ torch.save(simplenet, "./tmp/simplenet_cat_fish")  # まるごとセーブ
 
 # %%
 
+
+from PIL import Image
+from IPython.display import display
+
+img = Image.open("../data/images/fish2.jpg")
+display(img)
+
+img_t = img_transforms(img)
+img_t = torch.unsqueeze(img_t, 0) 
+out = simplenet(img_t)
+
+index = torch.max(out,1)[1]
+print(index)
 # 
 # torch.save(simplenet.state_dict(), "./tmp/simplenet_cat_fish_dict") # layerの名前と重みをdict形式で保存
 
+
+# %%
