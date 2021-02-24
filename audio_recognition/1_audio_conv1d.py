@@ -4,15 +4,24 @@ os.environ["CUDA_VISIBLE_DEVICES"]='3'
 #%%
 from glob import glob
 from collections import Counter
+import numpy as np
 
-esc50_list = [f.split("-")[-1].replace(".wav","") for f in glob("./ESC-50/audio/*.wav")]
-print(esc50_list)
+# それぞれのクラスに４０個ずつファイルがあるのがわかる
+esc50_list = [int(f.split("-")[-1].replace(".wav","")) for f in glob("./ESC-50/audio/*.wav")]
+
 print(Counter(esc50_list))
+
+# クラスは50個ある
+print("max class", np.max(np.array(esc50_list)))
+
+
 
 # %%
 import torchaudio
 from torch.utils.data import Dataset
 from pathlib import Path
+
+SR = 16000
 
 class ESC50(Dataset):
     def __init__(self, path):
@@ -23,12 +32,37 @@ class ESC50(Dataset):
     def __getitem__(self, index):
         filename, label = self.items[index]
         audio_tensor, sample_rate = torchaudio.load(filename)
+        print(sample_rate)
         return audio_tensor, label
 
     def __len__(self):
         return self.length
 
 # %%
+
+import os
+import shutil
+
+# train/validation/testにわける
+os.makedirs("./data/train", exist_ok=True)
+os.makedirs("./data/val", exist_ok=True)
+os.makedirs("./data/test", exist_ok=True)
+
+# ちょうど1,2...5と割り振られていたのでそれを使う！
+for f in glob("./ESC-50/audio/*.wav"):
+    if int(os.path.basename(f).split("-")[0]) <= 3:
+        shutil.copy(f, "./data/train")
+    if int(os.path.basename(f).split("-")[0]) == 4:
+        shutil.copy(f, "./data/val")
+    if int(os.path.basename(f).split("-")[0]) == 5:
+        shutil.copy(f, "./data/test")
+
+#%%
+train_data = ESC50("./data/train/")
+for audio, label in train_data:
+    print(audio.shape, label)
+
+#%%
 test_esc50 = ESC50("./data/train/")
 tensor, label = list(test_esc50)[0]
 print(tensor.shape, label) # [1, 220500] tensor: audio signal
