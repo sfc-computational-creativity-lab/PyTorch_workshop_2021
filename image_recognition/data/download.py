@@ -1,4 +1,7 @@
 # download.py
+# Copied from 
+# https://github.com/falloutdurham/beginners-pytorch-deep-learning
+# PyTorch for Deep Learning: Creating and Deploying Deep Learning Applications
 
 import os
 import sys

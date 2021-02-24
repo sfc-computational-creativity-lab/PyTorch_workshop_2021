@@ -34,8 +34,11 @@ val_data = torchvision.datasets.ImageFolder(root=val_data_path, transform=img_tr
 test_data_path = "./data/test/"
 test_data = torchvision.datasets.ImageFolder(root=test_data_path, transform=img_transforms, is_valid_file=check_image)
 
+<<<<<<< HEAD
 val_data[0]
 
+=======
+>>>>>>> 97c678d4d2358db34ffc82871f60f5d2e1e21569
 #%%
 
 batch_size = 32
@@ -43,8 +46,12 @@ train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_siz
 val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
 test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
 
+<<<<<<< HEAD
 #%%
 
+=======
+# %%
+>>>>>>> 97c678d4d2358db34ffc82871f60f5d2e1e21569
 
 class CNNNet(nn.Module):
     
@@ -86,6 +93,12 @@ class CNNNet(nn.Module):
         return x
 
 cnnnet = CNNNet()
+# %%
+from torchinfo import summary
+
+summary(cnnnet, (1, 3, 224, 224))
+
+# %% 
 
 #%%
 
@@ -99,6 +112,8 @@ summary(cnnnet,(1,3,224,224))
 # Optimizer
 optimizer = optim.Adam(cnnnet.parameters(), lr=0.001)
 
+# %%
+
 # GPUの有無を確認
 if torch.cuda.is_available():
     print("Using GPU")
@@ -108,6 +123,8 @@ else:
     device = torch.device("cpu")
 cnnnet.to(device) # 昔のバージョンだと　cuda()
 print(cnnnet)
+
+# %%
 
 epochs = 100
 
@@ -157,7 +174,7 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
 
 # training
 train(cnnnet, optimizer, torch.nn.CrossEntropyLoss(), train_data_loader, 
-    val_data_loader, epochs=30, device=device)
+    val_data_loader, epochs=epochs, device=device)
 print("finished training")
 
 # save
@@ -169,8 +186,11 @@ torch.save(cnnnet, "./tmp/cnnnet_cat_fish")  # まるごとセーブ
 # torch.save(simplenet.state_dict(), "./tmp/simplenet_cat_fish_dict") # layerの名前と重みをdict形式で保存
 
 
+<<<<<<< HEAD
 
 # %%
 
 
+=======
+>>>>>>> 97c678d4d2358db34ffc82871f60f5d2e1e21569
 # %%
