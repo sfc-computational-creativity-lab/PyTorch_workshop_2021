@@ -28,6 +28,8 @@ for inst in pm.instruments:
     for note in inst.notes[:5]: # 最初の5ノート
         print(note)
 
+    print(inst.program)
+
 # %%
 
 # MIDIのNote-on Note-offの確認
@@ -56,6 +58,13 @@ def get_pitch_array(filepath):
     
     return results
 
+#%%
+
+pitch_array = get_pitch_array(path)
+print(pitch_array)
+
+#%%
+
 def pitch_array_to_midi(pitches, bpm=120):
     pm = pretty_midi.PrettyMIDI()
     piano = pretty_midi.instrument_name_to_program('Acoustic Grand Piano')
@@ -66,7 +75,7 @@ def pitch_array_to_midi(pitches, bpm=120):
     for index, pitch in enumerate(pitches):
         start = index * quarter_note_length
         end = start + quarter_note_length
-        p   = pitch + MIN_NOTE
+        p   = pitch + MIN_NOTE  
         note = pretty_midi.Note(velocity=100, pitch= p, start=start, end=end)
         piano.notes.append(note)
     pm.instruments.append(piano)
@@ -110,22 +119,23 @@ class MIDIData(Dataset):
             end_index = start_index + prime_length
             next_index = end_index + 1 # 次のピッチのインデックス
 
-            prime = ps[start_index:end_index]
-            next_pitch = ps[next_index]
+            prime = ps[start_index:end_index] # input
+            next_pitch = ps[next_index]       # output
 
-            self.primes.append(prime) # PyTorchのテンソルにして格納
+            self.primes.append(prime) 
             self.nexts.append(next_pitch)  
 
         self.length = len(self.primes)
 
     def __getitem__(self, index):
+        # PyTorchのテンソルにしてreturn
         return torch.tensor(self.primes[index]),  torch.tensor(self.nexts[index])
 
     def __len__(self):
         return self.length
 # %%
-train_data = MIDIData('./data/midi/chopin/train/', total_num=50000)
-val_data = MIDIData('./data/midi/chopin/val/')
+train_data = MIDIData('./data/midi/chopin/train/', total_num=500000)
+val_data = MIDIData('./data/midi/chopin/val/', total_num=10000)
 
 print(train_data.primes[:3])
 print(train_data.nexts[:3])
@@ -143,23 +153,36 @@ import torch.nn.functional as F
 EMBEDDING_DIM = 32
 HIDDEN_DIM = 256
 
+
+#%%
+
 embed = nn.Embedding(PITCH_NUM, EMBEDDING_DIM)
 
-x = torch.tensor(train_data.primes[0])
-x = torch.unsqueeze(x, 1) # RNNの入力は デフォルトで(seq_length, batch, input dimension)のフォーマット
+#x, y = train_data_loader
+x = torch.tensor(train_data.primes[0:3])
+#x = torch.unsqueeze(x, 0)
 print(x.shape)
 
+#%%
+
 emb = embed(x)
-print(emb)
 print(emb.shape)
 
 # %% 
 
-lstm = nn.RNN(EMBEDDING_DIM, PITCH_NUM)
-output, h = lstm(emb) 
+# RNNの入力は デフォルトで(seq_length, batch, input dimension)のフォーマット
+rnn = nn.RNN(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True) 
+output, h = rnn(emb) 
 
-print(output)
+#print(output.shape)
 print(h.shape)
+
+# %%
+h = h.squeeze()
+
+fc = nn.Linear(HIDDEN_DIM, PITCH_NUM)
+y = fc(h)
+print(y.shape)
 
 # %%
 
@@ -169,18 +192,42 @@ class PitcnNet(nn.Module):
     
     def __init__(self):
         super(PitcnNet, self).__init__()
+
         self.embeds = nn.Embedding(PITCH_NUM, EMBEDDING_DIM)
-        self.rnn    = nn.LSTM(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True)
+        self.rnn    = nn.RNN(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True)
         self.fc     = nn.Linear(HIDDEN_DIM, PITCH_NUM) 
 
     def forward(self, x):
         emb = self.embeds(x)
-        _, (hidden, _) = self.rnn(emb)
-        y = hidden.squeeze(0)
-        # print(x.shape, hidden.shape, y.shape)
+        _, h = self.rnn(emb)
+        h = h.squeeze()
+        y = self.fc(h)
         return y
 
 pitchnet = PitcnNet()
+
+#%%
+
+# ピッチのシーケンスから次のピッチを予測するモデル
+
+class PitcnNet2(nn.Module):
+    
+    def __init__(self):
+        super(PitcnNet2, self).__init__()
+
+        self.embeds = nn.Embedding(PITCH_NUM, EMBEDDING_DIM)
+        self.lstm   = nn.LSTM(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True)
+        self.fc     = nn.Linear(HIDDEN_DIM, PITCH_NUM) 
+
+    def forward(self, x):
+        emb = self.embeds(x)
+        _, (h, _) = self.lstm(emb) # output, (h, c)
+        h = h.squeeze()
+        y = self.fc(h)
+        return y
+
+pitchnet = PitcnNet2()
+
 # %%
 # Optimizer
 optimizer = optim.Adam(pitchnet.parameters(), lr=0.001)
@@ -195,6 +242,15 @@ else:
 pitchnet.to(device) # 昔のバージョンだと　cuda()
 print(pitchnet)
 
+# %% 
+
+for batch in train_data_loader:
+    inputs, labels = batch
+    inputs = inputs.to(device)
+    labels = labels.to(device)
+    out = pitchnet(inputs)
+    print(out.shape)
+    break
 
 # %%
 
@@ -265,10 +321,14 @@ pitchnet.eval()
 
 seq = random.choice(val_data.primes)
 seq = torch.tensor(seq)
+seq = seq.to(device)
 
-for _ in range(20):
+for _ in range(36):
     seq_input = torch.unsqueeze(seq, 0) # バッチを作る
-    prediction = F.softmax(pitchnet(seq_input), dim=1)
+    output = pitchnet(seq_input)
+    print(output.shape)
+    prediction = F.softmax(output)
+    
     next_note = prediction.argmax()
     seq = torch.cat((seq, torch.unsqueeze(next_note,0)), 0)
     print(seq)
