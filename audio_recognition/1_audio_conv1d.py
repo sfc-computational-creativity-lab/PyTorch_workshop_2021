@@ -1,6 +1,6 @@
 #%%
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]='3'
+#os.environ["CUDA_VISIBLE_DEVICES"]='3'
 #%%
 from glob import glob
 from collections import Counter
@@ -32,7 +32,6 @@ class ESC50(Dataset):
     def __getitem__(self, index):
         filename, label = self.items[index]
         audio_tensor, sample_rate = torchaudio.load(filename)
-        print(sample_rate)
         return audio_tensor, label
 
     def __len__(self):
@@ -140,7 +139,7 @@ class AudioNet(Module):
 
 audionet = AudioNet()
 audionet.to(device) # 昔のバージョンだと　cuda()
-summary(audionet, input_size = (1, 220500))
+summary(audionet, input_size = (1, 1, 220500))
 # %% 
 # updated version
 # class AudioNet(nn.Module):
@@ -233,7 +232,7 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
             .format(epoch, training_loss, valid_loss, num_correct/num_examples))
 
 # %%
-train(audionet, optimizer, nn.CrossEntropyLoss(), train_loader, val_loader, epochs=40, device=device)
+train(audionet, optimizer, nn.CrossEntropyLoss(), train_loader, val_loader, epochs=100, device=device)
 
 
 # %%

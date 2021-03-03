@@ -34,24 +34,12 @@ val_data = torchvision.datasets.ImageFolder(root=val_data_path, transform=img_tr
 test_data_path = "./data/test/"
 test_data = torchvision.datasets.ImageFolder(root=test_data_path, transform=img_transforms, is_valid_file=check_image)
 
-<<<<<<< HEAD
-val_data[0]
-
-=======
->>>>>>> 97c678d4d2358db34ffc82871f60f5d2e1e21569
-#%%
-
 batch_size = 32
 train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size)
 val_data_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size)
 test_data_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size)
 
-<<<<<<< HEAD
-#%%
-
-=======
 # %%
->>>>>>> 97c678d4d2358db34ffc82871f60f5d2e1e21569
 
 class CNNNet(nn.Module):
     
@@ -185,12 +173,3 @@ torch.save(cnnnet, "./tmp/cnnnet_cat_fish")  # まるごとセーブ
 # 
 # torch.save(simplenet.state_dict(), "./tmp/simplenet_cat_fish_dict") # layerの名前と重みをdict形式で保存
 
-
-<<<<<<< HEAD
-
-# %%
-
-
-=======
->>>>>>> 97c678d4d2358db34ffc82871f60f5d2e1e21569
-# %%
