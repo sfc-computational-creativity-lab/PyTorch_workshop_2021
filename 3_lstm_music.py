@@ -200,7 +200,7 @@ class PitcnNet(nn.Module):
     def forward(self, x):
         emb = self.embeds(x)
         _, h = self.rnn(emb)
-        h = h.squeeze()
+        h = h.squeeze(dim=0)
         y = self.fc(h)
         return y
 

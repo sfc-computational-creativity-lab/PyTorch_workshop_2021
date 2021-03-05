@@ -10,7 +10,7 @@ import math
 
 # %%
 
-path = './data/midi/chopin/chpn-p19.mid'
+path = './data/midi/bach/train/aof/dou1.mid'
 
 pm = pretty_midi.PrettyMIDI(path)
 
@@ -250,8 +250,8 @@ from pathlib import Path
 import random
 
 class MIDIData(Dataset):
-    def __init__(self, path, prime_length = 16, total_num = 1000):
-        self.files = Path(path).glob("*.mid")
+    def __init__(self, path, prime_length = 24, total_num = 1000):
+        self.files = Path(path).glob("*/*.mid")
 
         # 各トラックごとにイベントの配列を取り出した配列を作る
         events = []
@@ -291,8 +291,8 @@ class MIDIData(Dataset):
 
 # %%
 
-train_data = MIDIData('./data/midi/Nocturnes/train/', total_num=10000)
-val_data = MIDIData('./data/midi/Nocturnes/val/', total_num=2000) 
+train_data = MIDIData('./data/midi/bach/train/', total_num=100000)
+val_data = MIDIData('./data/midi/bach/val/', total_num=8000) 
 
 batch_size = 32
 train_data_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size)
@@ -315,12 +315,14 @@ class PerformanceRNN(nn.Module):
 
         self.embeds = nn.Embedding(TOTAL_EVENTS, EMBEDDING_DIM)
         self.lstm   = nn.LSTM(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True)
+        self.lstm2   = nn.LSTM(HIDDEN_DIM, HIDDEN_DIM, batch_first=True)
         self.fc     = nn.Linear(HIDDEN_DIM, TOTAL_EVENTS) 
 
     def forward(self, x):
         emb = self.embeds(x)
-        _, (h, _) = self.lstm(emb) # output, (h, c)
-        h = h.squeeze()
+        w, (_, _) = self.lstm(emb) # output, (h, c)
+        _, (h, _) = self.lstm2(w) # output, (h, c)
+        h = h.squeeze(dim=0)        # バッチのdimentionはsqueezeしないように注意
         y = self.fc(h)
         return y
 
@@ -395,15 +397,21 @@ def train(model, optimizer,loss_fn, train_loader, val_loader, epochs=20, device=
 
 # training
 train(prnn_model, optimizer, torch.nn.CrossEntropyLoss(), train_data_loader, 
-    val_data_loader, epochs=20, device=device)
+    val_data_loader, epochs=40, device=device)
 
 print("finished training")
+#%%
+
+train_data[:4]
 
 # %%
 
 # 学習済みモデルのテスト
+import numpy as np
 
 prnn_model.eval()
+
+temperature = 1.5
 
 for i in range(10):
     seq = random.choice(val_data.primes)
@@ -412,14 +420,15 @@ for i in range(10):
 
     for _ in range(1024):
         seq_input = torch.unsqueeze(seq, 0) # バッチを作る
+#        seq_input = seq_input[:,-32:]
         output = prnn_model(seq_input)
-        prediction = F.softmax(output)
-        
-        next_note = prediction.argmax()
-        seq = torch.cat((seq, torch.unsqueeze(next_note,0)), 0)
+        prediction = F.softmax(output / temperature, dim=1)
+        next_note = torch.multinomial(prediction, 1) #  next_note = prediction.argmax()
+        seq = torch.cat((seq, torch.squeeze(next_note, dim=0)), 0)
 
+    print(seq)
     pm = event_array_to_midi(seq.tolist())
-    pm.write("./tmp/prnn_output_nocturns_%d.mid" % i)
+    pm.write("./tmp/prnn_output_bach_%d.mid" % i)
 
 # %%
 
